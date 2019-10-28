@@ -110,10 +110,12 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
             shift_r = Utility::ypr2R(Vector3d(shift_yaw, 0, 0));
             shift_t = w_P_cur - w_R_cur * vio_R_cur.transpose() * vio_P_cur;
             // shift vio pose of whole sequence to the world frame
+            //如果存在多个图像序列，就将所有图像序列都合并到世界坐标系下
             if (old_kf->sequence != cur_kf->sequence && sequence_loop[cur_kf->sequence] == 0)
             {
                 w_r_vio = shift_r;
                 w_t_vio = shift_t;
+                //Tw1_bj = Tw1_w2 * Tw2_bj
                 vio_P_cur = w_r_vio * vio_P_cur + w_t_vio;
                 vio_R_cur = w_r_vio *  vio_R_cur;
                 cur_kf->updateVioPose(vio_P_cur, vio_R_cur);
