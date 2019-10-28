@@ -46,13 +46,13 @@ bool load_flag = 0;
 bool start_flag = 0;
 double SKIP_DIS = 0;
 
-float PCL_MAX_DIST, PCL_MIN_DIST, RESOLUTION;
-int U_BOUNDARY, D_BOUNDARY, L_BOUNDARY, R_BOUNDARY;
+float PCL_MAX_DIST, PCL_MIN_DIST, RESOLUTION; //0.3, 6, 0.02
+int U_BOUNDARY, D_BOUNDARY, L_BOUNDARY, R_BOUNDARY; // 10, 10, 40, 40
 int VISUALIZATION_SHIFT_X;
 int VISUALIZATION_SHIFT_Y;
 int ROW;
 int COL;
-int PCL_DIST;
+int PCL_DIST; //10
 int DEBUG_IMAGE;
 int VISUALIZE_IMU_FORWARD;
 int LOOP_CLOSURE;
@@ -627,6 +627,7 @@ int main(int argc, char **argv)
     // not important
     ros::Subscriber sub_imu_forward = n.subscribe("/vins_estimator/imu_propagate", 2000, imu_forward_callback);
     // odometry_buf
+    //从回调函数中得到IMU和cam位姿
     ros::Subscriber sub_vio = n.subscribe("/vins_estimator/odometry", 2000, vio_callback);
 
     //get image msg, store in image_buf
@@ -635,6 +636,7 @@ int main(int argc, char **argv)
     message_filters::Subscriber<sensor_msgs::Image> sub_depth(n, DEPTH_TOPIC, 1);
     //message_filters::TimeSynchronizer<sensor_msgs::Image, sensor_msgs::Image> sync(sub_image, sub_depth, 2000);
     // fit fisheye camera
+    //将image_msg放入image_buf，同时根据时间戳检测是否是新的图像序列
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image,sensor_msgs::Image> syncPolicy;
     message_filters::Synchronizer<syncPolicy> sync(syncPolicy(10), sub_image, sub_depth);
     sync.registerCallback(boost::bind(&image_callback, _1, _2));

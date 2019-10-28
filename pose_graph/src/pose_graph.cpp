@@ -59,6 +59,7 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
         r_drift = Eigen::Matrix3d::Identity();
         m_drift.unlock();
     }
+    //获取当前帧的位姿并更新
     cur_kf->getVioPose(vio_P_cur, vio_R_cur);
     vio_P_cur = w_r_vio * vio_P_cur + w_t_vio;
     vio_R_cur = w_r_vio *  vio_R_cur;
@@ -81,7 +82,7 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
 	{
         //printf(" %d detect loop with %d \n", cur_kf->index, loop_index);
         KeyFrame* old_kf = getKeyFrame(loop_index);
-
+        //当前帧与回环帧的描述子匹配，如果成功则确定存在回环
         if (cur_kf->findConnection(old_kf))
         {
             if (earliest_loop_index > loop_index || earliest_loop_index == -1)
@@ -94,13 +95,17 @@ void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
 
             Vector3d relative_t;
             Quaterniond relative_q;
+            //Tbj_bi
             relative_t = cur_kf->getLoopRelativeT();
             relative_q = (cur_kf->getLoopRelativeQ()).toRotationMatrix();
+            //数据库中的回环帧相对于滑动窗口的位置
+            //Tw2_bi = Tw2_bj * Tbj_bi
             w_P_cur = w_R_old * relative_t + w_P_old;
             w_R_cur = w_R_old * relative_q;
             double shift_yaw;
             Matrix3d shift_r;
             Vector3d shift_t;
+            //Tw1_w2
             shift_yaw = Utility::R2ypr(w_R_cur).x() - Utility::R2ypr(vio_R_cur).x();
             shift_r = Utility::ypr2R(Vector3d(shift_yaw, 0, 0));
             shift_t = w_P_cur - w_R_cur * vio_R_cur.transpose() * vio_P_cur;
@@ -354,6 +359,7 @@ int PoseGraph::detectLoop(KeyFrame* keyframe, int frame_index)
     }
     TicToc tmp_t;
     //first query; then add this frame into database!
+    //ret是对比的结果
     QueryResults ret;
     TicToc t_query;
     db.query(keyframe->brief_descriptors, ret, 4, frame_index - 50);
@@ -371,7 +377,7 @@ int PoseGraph::detectLoop(KeyFrame* keyframe, int frame_index)
     if (DEBUG_IMAGE)
     {
         loop_result = compressed_image.clone();
-        if (ret.size() > 0)
+        if (ret.size() > 0)//ret 表示对比得到的结果
             putText(loop_result, "neighbour score:" + to_string(ret[0].Score), cv::Point2f(10, 50), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255));
     }
     // visual loop result
