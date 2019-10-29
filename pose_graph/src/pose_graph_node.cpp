@@ -171,6 +171,7 @@ void pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 // not used
 void imu_forward_callback(const nav_msgs::Odometry::ConstPtr &forward_msg)
 {
+    //Visual_imu_forward == 0
     if (VISUALIZE_IMU_FORWARD)
     {
         Vector3d vio_t(forward_msg->pose.pose.position.x, forward_msg->pose.pose.position.y, forward_msg->pose.pose.position.z);
@@ -196,8 +197,10 @@ void imu_forward_callback(const nav_msgs::Odometry::ConstPtr &forward_msg)
         cameraposevisual.publish_by(pub_camera_pose_visual, forward_msg->header);
     }
 }
+//重定位回调函数，将重定位帧的相对位姿放入loop_info，updateKeyFrameLoop()进行回环更新
 void relo_relative_pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
 {
+    //relative_t是Tbj_bi,即经过滑动窗口优化后的闭环帧相对于滑动窗口中第j帧的位姿变化
     Vector3d relative_t = Vector3d(pose_msg->pose.pose.position.x,
                                    pose_msg->pose.pose.position.y,
                                    pose_msg->pose.pose.position.z);
@@ -207,6 +210,7 @@ void relo_relative_pose_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
     relative_q.y() = pose_msg->pose.pose.orientation.y;
     relative_q.z() = pose_msg->pose.pose.orientation.z;
     double relative_yaw = pose_msg->twist.twist.linear.x;
+    //index是滑动窗口内帧的编号j
     int index = pose_msg->twist.twist.linear.y;
     //printf("receive index %d \n", index );
     Eigen::Matrix<double, 8, 1 > loop_info;
@@ -237,7 +241,7 @@ void vio_callback(const nav_msgs::Odometry::ConstPtr &pose_msg)
     Quaterniond vio_q_cam;
     vio_t_cam = vio_t + vio_q * tic;
     vio_q_cam = vio_q * qic;
-
+    //用来显示ros的轨迹
     if (!VISUALIZE_IMU_FORWARD)
     {
         cameraposevisual.reset();
@@ -536,10 +540,10 @@ int main(int argc, char **argv)
     posegraph.registerPub(n);
 
     // read param
-    n.getParam("visualization_shift_x", VISUALIZATION_SHIFT_X);
-    n.getParam("visualization_shift_y", VISUALIZATION_SHIFT_Y);
-    n.getParam("skip_cnt", SKIP_CNT);
-    n.getParam("skip_dis", SKIP_DIS);
+    n.getParam("visualization_shift_x", VISUALIZATION_SHIFT_X);//visualization_shift_x =0
+    n.getParam("visualization_shift_y", VISUALIZATION_SHIFT_Y);//visualization_shift_y =0
+    n.getParam("skip_cnt", SKIP_CNT);//skip_cnt =0
+    n.getParam("skip_dis", SKIP_DIS);//skip_dis =0
     std::string config_file;
     n.getParam("config_file", config_file);
     cv::FileStorage fsSettings(config_file, cv::FileStorage::READ);
@@ -548,7 +552,7 @@ int main(int argc, char **argv)
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
     }
 
-    double camera_visual_size = fsSettings["visualize_camera_size"];
+    double camera_visual_size = fsSettings["visualize_camera_size"]; //0.4
     cameraposevisual.setScale(camera_visual_size);
     cameraposevisual.setLineWidth(camera_visual_size / 10.0);
 
@@ -624,7 +628,7 @@ int main(int argc, char **argv)
 
     fsSettings.release();
     // publish camera pose by imu propagate and odometry (Ps and Rs of curr frame)
-    // not important
+    // not important 没有执行
     ros::Subscriber sub_imu_forward = n.subscribe("/vins_estimator/imu_propagate", 2000, imu_forward_callback);
     // odometry_buf
     //从回调函数中得到IMU和cam位姿
@@ -652,6 +656,7 @@ int main(int argc, char **argv)
 
     // do relocalization here.
     // pose_graph publish match_points to vins_estimator, estimator then publish relo_relative_pose
+    //计算得到该闭环帧经过滑窗优化后的位姿，从而计算出累积的偏移误差，进而对滑窗内的位姿进行修正
     ros::Subscriber sub_relo_relative_pose = n.subscribe("/vins_estimator/relo_relative_pose", 2000, relo_relative_pose_callback);
 
     pub_match_img = n.advertise<sensor_msgs::Image>("match_image", 1000);

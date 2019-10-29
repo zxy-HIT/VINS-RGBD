@@ -187,7 +187,7 @@ void CameraPoseVisualization::reset() {
 }
 
 void CameraPoseVisualization::publish_by( ros::Publisher &pub, const std_msgs::Header &header ) {
-	visualization_msgs::MarkerArray markerArray_msg;
+	visualization_msgs::MarkerArray markerArray_msg;//用来显示文字
 	
 	for(auto& marker : m_markers) {
 		marker.header = header;

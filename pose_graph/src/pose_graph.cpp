@@ -1059,14 +1059,15 @@ void PoseGraph::publish()
 
     //posegraph_visualization->publish_by(pub_pose_graph, path[sequence_cnt].header);
 }
-
+//更新关键帧的回环信息
 void PoseGraph::updateKeyFrameLoop(int index, Eigen::Matrix<double, 8, 1 > &_loop_info)
 {
     KeyFrame* kf = getKeyFrame(index);
     kf->updateLoop(_loop_info);
+    //_loop_info(7) is yaw of Keyframe
     if (abs(_loop_info(7)) < 30.0 && Vector3d(_loop_info(0), _loop_info(1), _loop_info(2)).norm() < 20.0)
     {
-        if (FAST_RELOCALIZATION)
+        if (FAST_RELOCALIZATION) //always 1
         {
             KeyFrame* old_kf = getKeyFrame(kf->loop_index);
             Vector3d w_P_old, w_P_cur, vio_P_cur;
@@ -1076,13 +1077,16 @@ void PoseGraph::updateKeyFrameLoop(int index, Eigen::Matrix<double, 8, 1 > &_loo
 
             Vector3d relative_t;
             Quaterniond relative_q;
+            //Tbj_bi
             relative_t = kf->getLoopRelativeT();
             relative_q = (kf->getLoopRelativeQ()).toRotationMatrix();
+            //
             w_P_cur = w_R_old * relative_t + w_P_old;
             w_R_cur = w_R_old * relative_q;
             double shift_yaw;
             Matrix3d shift_r;
             Vector3d shift_t;
+            //shift..表示Tw1_w2即滑动窗口帧相对于世界坐标系的偏移量
             shift_yaw = Utility::R2ypr(w_R_cur).x() - Utility::R2ypr(vio_R_cur).x();
             shift_r = Utility::ypr2R(Vector3d(shift_yaw, 0, 0));
             shift_t = w_P_cur - w_R_cur * vio_R_cur.transpose() * vio_P_cur;
